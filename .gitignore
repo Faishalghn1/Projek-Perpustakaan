@@ -1,0 +1,14 @@
+# Variabel lingkungan (berisi kata sandi)
+.env
+
+# Log
+logs/
+*.log
+
+# Berkas sistem operasi
+.DS_Store
+Thumbs.db
+
+# Konfigurasi IDE
+.vscode/
+.idea/
