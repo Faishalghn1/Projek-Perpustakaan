@@ -1,10 +1,5 @@
-- Basis data sudah dibuat oleh variabel MARIADB_DATABASE;
--- baris berikut memastikan skrip tetap aman dijalankan ulang.
-CREATE DATABASE IF NOT EXISTS LibraryDB
-  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE LibraryDB;
-
--- Tabel Buku
+-- The MariaDB image creates DB_NAME before running this script.
+-- Keeping the schema scoped to the configured database avoids hard-coded database names.
 CREATE TABLE IF NOT EXISTS Books (
   ISBN     VARCHAR(20)  PRIMARY KEY,
   Title    VARCHAR(255) NOT NULL,
@@ -13,7 +8,6 @@ CREATE TABLE IF NOT EXISTS Books (
   Quantity INT NOT NULL DEFAULT 0 CHECK (Quantity >= 0)
 ) ENGINE=InnoDB;
 
--- Tabel Anggota
 CREATE TABLE IF NOT EXISTS Members (
   MemberID INT AUTO_INCREMENT PRIMARY KEY,
   Name     VARCHAR(255) NOT NULL,
@@ -21,28 +15,40 @@ CREATE TABLE IF NOT EXISTS Members (
   Phone    VARCHAR(20)
 ) ENGINE=InnoDB;
 
--- Tabel Peminjaman
 CREATE TABLE IF NOT EXISTS Loans (
-  LoanID     INT AUTO_INCREMENT PRIMARY KEY,
-  MemberID   INT NOT NULL,
-  ISBN       VARCHAR(20) NOT NULL,
-  LoanDate   DATE NOT NULL,
-  ReturnDate DATE NULL,
+  LoanID       INT AUTO_INCREMENT PRIMARY KEY,
+  MemberID     INT NOT NULL,
+  ISBN         VARCHAR(20) NOT NULL,
+  LoanDate     DATE NOT NULL,
+  DueDate      DATE NOT NULL,
+  ReturnDate   DATE NULL,
+  RenewalCount TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  FineAmount   INT UNSIGNED NOT NULL DEFAULT 0,
   FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
-  FOREIGN KEY (ISBN)     REFERENCES Books(ISBN)
+  FOREIGN KEY (ISBN)     REFERENCES Books(ISBN),
+  INDEX idx_loans_member_active (MemberID, ReturnDate),
+  INDEX idx_loans_due_active (ReturnDate, DueDate)
 ) ENGINE=InnoDB;
 
--- Data contoh
-INSERT INTO Books (ISBN, Title, Author, Genre, Quantity) VALUES
+CREATE TABLE IF NOT EXISTS Reservations (
+  ReservationID INT AUTO_INCREMENT PRIMARY KEY,
+  MemberID      INT NOT NULL,
+  ISBN          VARCHAR(20) NOT NULL,
+  ReservedAt    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  Status        ENUM('waiting', 'ready', 'completed', 'cancelled') NOT NULL DEFAULT 'waiting',
+  ReadyAt       DATETIME NULL,
+  CompletedAt   DATETIME NULL,
+  FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
+  FOREIGN KEY (ISBN)     REFERENCES Books(ISBN),
+  INDEX idx_reservations_queue (ISBN, Status, ReservedAt, ReservationID),
+  INDEX idx_reservations_member (MemberID, Status)
+) ENGINE=InnoDB;
+
+INSERT IGNORE INTO Books (ISBN, Title, Author, Genre, Quantity) VALUES
   ('978-0140449136', 'The Odyssey', 'Homer', 'Classics', 5),
   ('978-0439139595', 'Harry Potter and the Goblet of Fire', 'J.K. Rowling', 'Fantasy', 10),
   ('978-0262033848', 'Introduction to Algorithms', 'Cormen et al.', 'Computer Science', 3);
 
-INSERT INTO Members (Name, Email, Phone) VALUES
+INSERT IGNORE INTO Members (Name, Email, Phone) VALUES
   ('John Doe',   'john.doe@example.com',   '08012345678'),
   ('Mary James', 'mary.james@example.com', '08087654321');
-
-INSERT INTO Loans (MemberID, ISBN, LoanDate, ReturnDate) VALUES
-  (1, '978-0140449136', '2025-11-01', '2025-11-15'),
-  (1, '978-0439139595', '2025-11-05', NULL),
-  (2, '978-0262033848', '2025-11-10', NULL);
